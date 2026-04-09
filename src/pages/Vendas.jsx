@@ -40,29 +40,48 @@ export default function Vendas() {
     }
   };
 
-  const handleAdicionarAoCarrinho = (e) => {
-    e.preventDefault();
-    if (!produtoSelecionado || quantidade <= 0) {
-      toast.error("Selecione um produto e uma quantidade válida.");
-      return;
-    }
-    const produtoInfo = produtos.find(p => p.id.toString() === produtoSelecionado);
-    if (!produtoInfo) return;
-    const precoNumber = parseFloat(produtoInfo.preco);
-    const qtdNumber = parseInt(quantidade);
-    const subtotal = precoNumber * qtdNumber;
-    const novoItem = {
-      produto_id: produtoInfo.id,
-      nome: produtoInfo.nome,
-      quantidade: qtdNumber,
-      preco_unitario: precoNumber,
-      subtotal: subtotal,
-      idTemporario: Date.now()
-    };
-    setCarrinho([...carrinho, novoItem]);
-    setProdutoSelecionado('');
-    setQuantidade(1);
+ const handleAdicionarAoCarrinho = (e) => {
+  e.preventDefault();
+  if (!produtoSelecionado || quantidade <= 0) {
+    toast.error("Selecione um produto e uma quantidade válida.");
+    return;
+  }
+
+  const produtoInfo = produtos.find(p => p.id.toString() === produtoSelecionado);
+  if (!produtoInfo) return;
+
+  const qtdNumber = parseInt(quantidade);
+
+  // Verifica quanto já está no carrinho desse produto
+  const itemNoCarrinho = carrinho.find(item => item.produto_id === produtoInfo.id);
+  const qtdJaNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
+  const qtdTotal = qtdJaNoCarrinho + qtdNumber;
+
+  // Valida contra o estoque
+  if (qtdTotal > produtoInfo.estoque) {
+    toast.error(
+      `Estoque insuficiente! Disponível: ${produtoInfo.estoque - qtdJaNoCarrinho} un.`,
+      { duration: 4000 }
+    );
+    return;
+  }
+
+  const precoNumber = parseFloat(produtoInfo.preco);
+  const subtotal = precoNumber * qtdNumber;
+
+  const novoItem = {
+    produto_id: produtoInfo.id,
+    nome: produtoInfo.nome,
+    quantidade: qtdNumber,
+    preco_unitario: precoNumber,
+    subtotal: subtotal,
+    idTemporario: Date.now()
   };
+
+  setCarrinho([...carrinho, novoItem]);
+  setProdutoSelecionado('');
+  setQuantidade(1);
+};
 
   const handleRemoverDoCarrinho = (idTemp) => {
     setCarrinho(carrinho.filter(item => item.idTemporario !== idTemp));
@@ -71,54 +90,68 @@ export default function Vendas() {
   const valorTotalVenda = carrinho.reduce((total, item) => total + item.subtotal, 0);
 
   const handleFinalizarVenda = async () => {
-    if (!clienteSelecionado) {
-      toast.error("Por favor, selecione um cliente.");
-      return;
-    }
-    if (carrinho.length === 0) {
-      toast.error("Adicione pelo menos um produto ao carrinho.");
-      return;
-    }
-    setSalvando(true);
-    try {
-      const { data: vendaCadastrada, error: erroVenda } = await supabase
-        .from('vendas')
-        .insert([{ 
-          cliente_id: clienteSelecionado, 
-          valor_total: valorTotalVenda 
-        }])
-        .select()
-        .single();
-      if (erroVenda) throw erroVenda;
-      const vendaId = vendaCadastrada.id;
-      const itensParaSalvar = carrinho.map(item => ({
-        venda_id: vendaId,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.subtotal
-      }));
-      const { error: erroItens } = await supabase
-        .from('itens_venda')
-        .insert(itensParaSalvar);
-      if (erroItens) throw erroItens;
-      
-      Swal.fire({
-        title: 'Venda Finalizada!',
-        text: `A venda no valor de R$ ${valorTotalVenda.toFixed(2)} foi salva com sucesso.`,
-        icon: 'success',
-        confirmButtonColor: '#5B705B' // Verde Oliva da foto
-      });
-      setClienteSelecionado('');
-      setCarrinho([]);
-    } catch (error) {
-      console.error("Erro ao finalizar venda:", error.message);
-      toast.error("Ocorreu um erro ao salvar a venda.");
-    } finally {
-      setSalvando(false);
-    }
-  };
+  if (!clienteSelecionado) {
+    toast.error("Por favor, selecione um cliente.");
+    return;
+  }
+  if (carrinho.length === 0) {
+    toast.error("Adicione pelo menos um produto ao carrinho.");
+    return;
+  }
+  setSalvando(true);
+  try {
+    // 1. Salva a venda
+    const { data: vendaCadastrada, error: erroVenda } = await supabase
+      .from('vendas')
+      .insert([{ 
+        cliente_id: clienteSelecionado, 
+        valor_total: valorTotalVenda 
+      }])
+      .select()
+      .single();
+    if (erroVenda) throw erroVenda;
 
+    // 2. Salva os itens
+    const itensParaSalvar = carrinho.map(item => ({
+      venda_id: vendaCadastrada.id,
+      produto_id: item.produto_id,
+      quantidade: item.quantidade,
+      preco_unitario: item.preco_unitario,
+      subtotal: item.subtotal
+    }));
+    const { error: erroItens } = await supabase
+      .from('itens_venda')
+      .insert(itensParaSalvar);
+    if (erroItens) throw erroItens;
+
+    // 3. Atualiza o estoque de cada produto
+    for (const item of carrinho) {
+      const produtoAtual = produtos.find(p => p.id === item.produto_id);
+      if (!produtoAtual) continue;
+      const novoEstoque = produtoAtual.estoque - item.quantidade;
+      const { error: erroEstoque } = await supabase
+        .from('produtos')
+        .update({ estoque: novoEstoque })
+        .eq('id', item.produto_id);
+      if (erroEstoque) throw erroEstoque;
+    }
+
+    Swal.fire({
+      title: 'Venda Finalizada!',
+      text: `A venda no valor de R$ ${valorTotalVenda.toFixed(2)} foi salva com sucesso.`,
+      icon: 'success',
+      confirmButtonColor: '#5B705B'
+    });
+    setClienteSelecionado('');
+    setCarrinho([]);
+    buscarDadosGerais(); // atualiza a lista de produtos com estoque novo
+  } catch (error) {
+    console.error("Erro ao finalizar venda:", error.message);
+    toast.error("Ocorreu um erro ao salvar a venda.");
+  } finally {
+    setSalvando(false);
+  }
+};
   return (
     <div className="flex bg-[#F9F7F2] min-h-screen w-full relative font-sans text-[#4A4A4A]">
       <Sidebar />
@@ -257,7 +290,7 @@ export default function Vendas() {
               >
                 {salvando ? 'Processando...' : 'Finalizar Pedido'}
               </button>
-              <p className="text-center text-[9px] text-[#B5B3AD] mt-4 uppercase tracking-tighter">Peças artesanais feitas com amor e dedicação</p>
+              
             </div>
           </div>
 

@@ -168,7 +168,7 @@ export default function Produtos() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
           <div>
             <h1 className="text-2xl font-serif text-[#3D3D3D] tracking-tight">Gerenciar Peças</h1>
-            <p className="text-[#8E8C84] text-sm mt-1 uppercase tracking-widest">Juliana Scarabelli Crochê</p>
+        
           </div>
           <button 
             onClick={handleAbrirModalNovo}
