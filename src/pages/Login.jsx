@@ -7,11 +7,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [erro, setErro] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setLoading(true);
     setErro(null);
 
@@ -21,7 +21,7 @@ export default function Login() {
     });
 
     if (error) {
-      setErro('E-mail ou senha incorretos. Tente novamente.');
+      setErro('E-mail ou senha incorretos.');
       setLoading(false);
     } else {
       navigate('/', { replace: true });
@@ -29,74 +29,81 @@ export default function Login() {
   };
 
   return (
-    // Fundo creme suave (#F8F7F2)
-    <div className="min-h-screen bg-[#F8F7F2] flex items-center justify-center p-4 font-sans text-[#4A4A4A]">
-      {/* Card com bordas finas e arredondamento leve como o do PDV */}
-      <div className="max-w-md w-full bg-white rounded-sm border border-[#F0EFEA] shadow-sm p-10">
-        
-        {/* Título Serifado (#2C2C2C) */}
-        <h2 className="text-3xl font-serif text-center text-[#2C2C2C] mb-2">
-          Acesso ao Sistema
-        </h2>
-        <p className="text-center text-[#AFAFAF] text-xs uppercase tracking-widest mb-10">
-          Identifique-se para continuar
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-[#F6F5F2] font-sans">
 
+      {/* CARD PRINCIPAL */}
+      <div className="w-full max-w-md bg-white border border-gray-100 shadow-sm rounded-2xl p-8">
+
+        {/* HEADER */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-[#2F2F2F]">
+            Acesso ao Sistema
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Faça login para continuar
+          </p>
+        </div>
+
+        {/* ERRO */}
         {erro && (
-          <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-sm text-sm mb-6 text-center font-medium">
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-3 rounded-lg mb-5 text-center">
             {erro}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        {/* FORM */}
+        <form onSubmit={handleLogin} className="space-y-4">
+
+          {/* EMAIL */}
           <div>
-            {/* Label no estilo das seções do PDV */}
-            <label className="block text-[10px] font-bold text-[#AFAFAF] uppercase tracking-[2px] mb-2">
-              E-mail institucional
+            <label className="text-xs uppercase tracking-widest text-gray-400">
+              E-mail
             </label>
             <input
               type="email"
-              required
-              className="w-full px-4 py-3 border border-[#F0EFEA] rounded-sm bg-[#FDFDFD] focus:ring-1 focus:ring-[#5B6D5B] focus:border-[#5B6D5B] outline-none transition-all placeholder:text-gray-300"
-              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              className="w-full mt-1 px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2F3E2F]/20"
+              required
             />
           </div>
 
+          {/* SENHA */}
           <div>
-            <label className="block text-[10px] font-bold text-[#AFAFAF] uppercase tracking-[2px] mb-2">
-              Senha de acesso
+            <label className="text-xs uppercase tracking-widest text-gray-400">
+              Senha
             </label>
             <input
               type="password"
-              required
-              className="w-full px-4 py-3 border border-[#F0EFEA] rounded-sm bg-[#FDFDFD] focus:ring-1 focus:ring-[#5B6D5B] focus:border-[#5B6D5B] outline-none transition-all placeholder:text-gray-300"
-              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full mt-1 px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2F3E2F]/20"
+              required
             />
           </div>
 
-          {/* Botão no tom Oliva (#5B6D5B) e texto em caixa alta */}
+          {/* BOTÃO */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-4 px-4 rounded-sm shadow-sm text-white text-xs font-bold uppercase tracking-[3px] transition-all
-              ${loading 
-                ? 'bg-[#AFAFAF] cursor-not-allowed' 
-                : 'bg-[#5B6D5B] hover:bg-[#4a5a4a] active:scale-[0.98]'}`}
+            className={`w-full py-3 rounded-xl text-white font-medium transition
+              ${loading
+                ? "bg-gray-400"
+                : "bg-[#2F3E2F] hover:opacity-90 active:scale-[0.99]"
+              }`}
           >
-            {loading ? 'Validando...' : 'Entrar no Sistema'}
+            {loading ? "Entrando..." : "Entrar"}
           </button>
+
         </form>
 
-        <div className="mt-8 pt-6 border-t border-[#F0EFEA] text-center">
-           <p className="text-[9px] text-[#AFAFAF] uppercase tracking-[2px]">
-             Ambiente Seguro & Monitorado
-           </p>
+        {/* FOOTER */}
+        <div className="text-center mt-6 text-xs text-gray-400">
+          Sistema de gestão • PDV
         </div>
-        
+
       </div>
     </div>
   );

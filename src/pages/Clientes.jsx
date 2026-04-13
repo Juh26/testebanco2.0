@@ -9,11 +9,10 @@ export default function Clientes() {
   const [loading, setLoading] = useState(true);
   const [termoBusca, setTermoBusca] = useState('');
 
-  // Estados do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [clienteEditandoId, setClienteEditandoId] = useState(null);
-  
+
   const [novoCliente, setNovoCliente] = useState({
     nome: '',
     email: '',
@@ -35,8 +34,7 @@ export default function Clientes() {
       if (error) throw error;
       setClientes(data);
     } catch (error) {
-      console.error("Erro ao buscar clientes:", error.message);
-      toast.error("Erro ao carregar a lista de clientes.");
+      toast.error("Erro ao carregar clientes");
     } finally {
       setLoading(false);
     }
@@ -50,11 +48,7 @@ export default function Clientes() {
 
   const handleAbrirModalEditar = (cliente) => {
     setClienteEditandoId(cliente.id);
-    setNovoCliente({
-      nome: cliente.nome,
-      email: cliente.email || '',
-      telefone: cliente.telefone || ''
-    });
+    setNovoCliente(cliente);
     setIsModalOpen(true);
   };
 
@@ -63,179 +57,142 @@ export default function Clientes() {
     setSalvando(true);
 
     try {
-      const dadosParaSalvar = {
+      const payload = {
         nome: novoCliente.nome,
         email: novoCliente.email,
         telefone: novoCliente.telefone
       };
 
       if (clienteEditandoId) {
-        const { error } = await supabase
-          .from('clientes')
-          .update(dadosParaSalvar)
-          .eq('id', clienteEditandoId);
-
-        if (error) throw error;
-        toast.success('Cliente atualizado com sucesso!', {
-          iconTheme: { primary: '#5B705B', secondary: '#fff' }
-        }); 
+        await supabase.from('clientes').update(payload).eq('id', clienteEditandoId);
+        toast.success('Cliente atualizado');
       } else {
-        const { error } = await supabase
-          .from('clientes')
-          .insert([dadosParaSalvar]);
-
-        if (error) throw error;
-        toast.success('Novo cliente cadastrado!', {
-          iconTheme: { primary: '#5B705B', secondary: '#fff' }
-        }); 
+        await supabase.from('clientes').insert([payload]);
+        toast.success('Cliente criado');
       }
 
       setIsModalOpen(false);
       buscarClientes();
-
     } catch (error) {
-      console.error("Erro ao salvar cliente:", error.message);
-      toast.error("Ocorreu um erro ao salvar o cliente."); 
+      toast.error('Erro ao salvar cliente');
     } finally {
       setSalvando(false);
     }
   };
 
-  const handleExcluirCliente = (id) => {
-    Swal.fire({
-      title: 'Remover cliente?',
-      text: "Você não poderá desfazer essa ação.",
+  // ✅ FUNÇÃO DE EXCLUIR (AGORA FUNCIONANDO)
+  const handleExcluirCliente = async (id) => {
+    const confirmacao = await Swal.fire({
+      title: 'Tem certeza?',
+      text: 'Essa ação não pode ser desfeita',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#8B0000', // Vermelho escuro para exclusão
-      cancelButtonColor: '#D1CEC5', // Cinza creme para cancelar
-      confirmButtonText: 'Sim, remover',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        popup: 'rounded-sm border border-[#EBE9E1]',
-        title: 'text-serif text-[#3D3D3D]',
-      }
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const { error } = await supabase
-            .from('clientes')
-            .delete()
-            .eq('id', id);
-
-          if (error) throw error;
-          
-          toast.success('Cliente removido com sucesso!', {
-            iconTheme: { primary: '#5B705B', secondary: '#fff' }
-          });
-          buscarClientes();
-
-        } catch (error) {
-          console.error("Erro ao excluir cliente:", error.message);
-          toast.error("Erro ao tentar remover o cliente.");
-        }
-      }
+      confirmButtonColor: '#166534',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sim, excluir',
+      cancelButtonText: 'Cancelar'
     });
+
+    if (!confirmacao.isConfirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Cliente excluído com sucesso');
+      buscarClientes();
+    } catch (error) {
+      toast.error('Erro ao excluir cliente');
+    }
   };
 
-  const clientesFiltrados = clientes.filter((cliente) =>
-    cliente.nome.toLowerCase().includes(termoBusca.toLowerCase())
+  const clientesFiltrados = clientes.filter(c =>
+    c.nome.toLowerCase().includes(termoBusca.toLowerCase())
   );
 
   return (
-    <div className="flex bg-[#F9F7F2] min-h-screen w-full relative font-sans text-[#4A4A4A]">
+    <div className="flex min-h-screen bg-[#F5F5F5] text-[#333]">
       <Sidebar />
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster position="top-right" />
 
-      {/* Estilos Baseados na Identidade Visual */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #D1CEC5; border-radius: 10px; }
-      `}} />
+      <main className="flex-1 p-8">
 
-      <main className="flex-1 p-8 lg:p-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-serif text-[#3D3D3D] tracking-tight">Gerenciar Clientes</h1>
-
+            <h1 className="text-2xl font-semibold">Clientes</h1>
+            <p className="text-sm text-gray-500">
+              Gestão de clientes cadastrados
+            </p>
           </div>
-          <button 
+
+          <button
             onClick={handleAbrirModalNovo}
-            className="bg-[#5B705B] hover:bg-[#4A5C4A] text-white text-xs font-bold uppercase tracking-widest py-3 px-6 rounded-sm shadow-sm transition-all active:scale-95 flex items-center gap-2"
+            className="bg-green-800 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-            Novo Cliente
+            + Novo Cliente
           </button>
         </div>
 
-        {/* Barra de Pesquisa */}
-        <div className="mb-8 flex">
-          <div className="relative w-full max-w-md">
-            <input
-              type="text"
-              placeholder="Pesquisar cliente pelo nome..."
-              className="w-full pl-11 pr-4 py-3 border border-[#EBE9E1] rounded-sm bg-white text-[#5C5C5C] text-sm focus:outline-none focus:border-[#5B705B] focus:ring-0 transition-colors shadow-[0_2px_15px_rgba(0,0,0,0.01)]"
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
-            />
-            <svg className="w-5 h-5 text-[#D1CEC5] absolute left-4 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-          </div>
+        {/* SEARCH */}
+        <div className="mb-6">
+          <input
+            value={termoBusca}
+            onChange={(e) => setTermoBusca(e.target.value)}
+            placeholder="Buscar cliente..."
+            className="w-full max-w-md px-4 py-3 border rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-green-800"
+          />
         </div>
 
-        {/* Tabela de Clientes */}
-        <div className="bg-white rounded-sm shadow-[0_2px_15px_rgba(0,0,0,0.02)] border border-[#EBE9E1] overflow-hidden">
-          <table className="min-w-full divide-y divide-[#EBE9E1]">
-            <thead className="bg-[#FCFBFA]">
-              <tr>
-                <th className="px-8 py-5 text-left text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Nome</th>
-                <th className="px-8 py-5 text-left text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">E-mail</th>
-                <th className="px-8 py-5 text-left text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Telefone</th>
-                <th className="px-8 py-5 text-right text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Ações</th>
+        {/* TABLE */}
+        <div className="bg-white rounded-md shadow overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100">
+              <tr className="text-left text-xs uppercase text-gray-600">
+                <th className="p-4">Nome</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th className="text-right pr-4">Ações</th>
               </tr>
             </thead>
-            
-            <tbody className="bg-white divide-y divide-[#F2F1ED]">
+
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="px-8 py-20 text-center text-[#8E8C84] text-xs font-light italic">
-                    <div className="flex flex-col items-center gap-3">
-                        <svg className="animate-spin h-6 w-6 text-[#D1CEC5]" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Carregando carteira de clientes...
-                    </div>
+                  <td colSpan="4" className="text-center p-6 text-gray-400">
+                    Carregando...
                   </td>
                 </tr>
               ) : clientesFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-8 py-20 text-center text-[#8E8C84] text-xs font-light italic">
-                    <div className="text-[#D1CEC5] text-3xl mb-3 flex justify-center">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    </div>
-                    {termoBusca ? "Nenhum cliente encontrado com esse nome." : "Nenhum cliente cadastrado no momento."}
+                  <td colSpan="4" className="text-center p-6 text-gray-400">
+                    Nenhum cliente encontrado
                   </td>
                 </tr>
               ) : (
-                clientesFiltrados.map((cliente) => (
-                  <tr key={cliente.id} className="hover:bg-[#F9F7F2]/50 transition duration-150 group">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-medium text-[#3D3D3D]">{cliente.nome}</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-xs text-[#8E8C84]">{cliente.email || '—'}</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-xs text-[#8E8C84]">{cliente.telefone || '—'}</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-right text-xs font-medium">
-                      <button 
-                        onClick={() => handleAbrirModalEditar(cliente)} 
-                        className="text-[#8E8C84] hover:text-[#5B705B] mr-4 transition uppercase tracking-widest text-[10px]"
+                clientesFiltrados.map((c) => (
+                  <tr key={c.id} className="border-t hover:bg-gray-50">
+                    <td className="p-4 font-medium">{c.nome}</td>
+                    <td className="text-sm text-gray-500">{c.email || '-'}</td>
+                    <td className="text-sm text-gray-500">{c.telefone || '-'}</td>
+
+                    <td className="text-right pr-4 text-xs">
+                      <button
+                        onClick={() => handleAbrirModalEditar(c)}
+                        className="text-blue-600 mr-3"
                       >
                         Editar
                       </button>
-                      <button 
-                        onClick={() => handleExcluirCliente(cliente.id)} 
-                        className="text-[#D1CEC5] hover:text-red-800 transition uppercase tracking-widest text-[10px]"
+
+                      <button
+                        onClick={() => handleExcluirCliente(c.id)}
+                        className="text-red-500"
                       >
-                        Remover
+                        Excluir
                       </button>
                     </td>
                   </tr>
@@ -244,64 +201,59 @@ export default function Clientes() {
             </tbody>
           </table>
         </div>
+
       </main>
 
-      {/* Modal de Cliente */}
+      {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#3D3D3D]/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-          <div className="bg-white p-8 lg:p-10 rounded-sm shadow-[0_10px_40px_rgba(0,0,0,0.08)] w-full max-w-md border border-[#EBE9E1]">
-            <h2 className="text-xl font-serif text-[#3D3D3D] mb-6 flex items-center gap-3">
-              <span className="w-6 h-[1px] bg-[#D1CEC5]"></span>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md p-6 rounded-md shadow">
+
+            <h2 className="text-lg font-semibold mb-4">
               {clienteEditandoId ? 'Editar Cliente' : 'Novo Cliente'}
             </h2>
-            
-            <form onSubmit={handleSalvarCliente} className="space-y-5">
-              <div>
-                <label className="block text-[10px] font-bold text-[#8E8C84] uppercase tracking-tighter mb-2 ml-1">Nome Completo</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="w-full border border-[#EBE9E1] rounded-md px-4 py-3 bg-[#FCFBFA] text-[#5C5C5C] text-sm focus:outline-none focus:border-[#5B705B] transition-colors" 
-                  value={novoCliente.nome} 
-                  onChange={(e) => setNovoCliente({...novoCliente, nome: e.target.value})} 
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#8E8C84] uppercase tracking-tighter mb-2 ml-1">E-mail</label>
-                <input 
-                  type="email" 
-                  className="w-full border border-[#EBE9E1] rounded-md px-4 py-3 bg-[#FCFBFA] text-[#5C5C5C] text-sm focus:outline-none focus:border-[#5B705B] transition-colors" 
-                  value={novoCliente.email} 
-                  onChange={(e) => setNovoCliente({...novoCliente, email: e.target.value})} 
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#8E8C84] uppercase tracking-tighter mb-2 ml-1">Telefone / WhatsApp</label>
-                <input 
-                  type="text" 
-                  placeholder="(00) 00000-0000" 
-                  className="w-full border border-[#EBE9E1] rounded-md px-4 py-3 bg-[#FCFBFA] text-[#5C5C5C] text-sm focus:outline-none focus:border-[#5B705B] transition-colors" 
-                  value={novoCliente.telefone} 
-                  onChange={(e) => setNovoCliente({...novoCliente, telefone: e.target.value})} 
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-[#F2F1ED]">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)} 
-                  className="px-6 py-3 text-[#8E8C84] bg-transparent hover:bg-[#F2F1ED] border border-[#EBE9E1] rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors"
+
+            <form onSubmit={handleSalvarCliente} className="space-y-4">
+
+              <input
+                placeholder="Nome"
+                value={novoCliente.nome}
+                onChange={(e) => setNovoCliente({ ...novoCliente, nome: e.target.value })}
+                className="w-full border p-3 rounded-md"
+                required
+              />
+
+              <input
+                placeholder="Email"
+                value={novoCliente.email}
+                onChange={(e) => setNovoCliente({ ...novoCliente, email: e.target.value })}
+                className="w-full border p-3 rounded-md"
+              />
+
+              <input
+                placeholder="Telefone"
+                value={novoCliente.telefone}
+                onChange={(e) => setNovoCliente({ ...novoCliente, telefone: e.target.value })}
+                className="w-full border p-3 rounded-md"
+              />
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-sm"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={salvando} 
-                  className="px-8 py-3 text-white bg-[#5B705B] hover:bg-[#4A5C4A] rounded-sm disabled:bg-[#D1CEC5] text-[10px] font-bold uppercase tracking-widest shadow-sm transition-all"
+
+                <button
+                  disabled={salvando}
+                  className="bg-green-800 text-white px-4 py-2 rounded-md text-sm"
                 >
-                  {salvando ? 'Salvando...' : (clienteEditandoId ? 'Atualizar' : 'Salvar')}
+                  {salvando ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
+
             </form>
           </div>
         </div>

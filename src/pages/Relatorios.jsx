@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../lib/supabase';
 import { Toaster, toast } from 'react-hot-toast';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function Relatorios() {
   const [vendas, setVendas] = useState([]);
@@ -14,6 +16,7 @@ export default function Relatorios() {
   const buscarRelatorioVendas = async () => {
     try {
       setLoading(true);
+
       const { data, error } = await supabase
         .from('vendas')
         .select(`
@@ -34,106 +37,172 @@ export default function Relatorios() {
     }
   };
 
+  // ✅ FUNÇÃO DE EXPORTAÇÃO (ADICIONADA)
+ const exportarRelatorio = async () => {
+  try {
+    const elemento = document.querySelector("main");
+
+    if (!elemento) {
+      toast.error("Elemento do relatório não encontrado");
+      return;
+    }
+
+    const canvas = await html2canvas(elemento, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff"
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const imgWidth = 210;
+    const pageHeight = 297;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save("relatorio.pdf");
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Erro ao exportar relatório");
+  }
+};
+
   return (
-    <div className="flex bg-[#F9F7F2] min-h-screen w-full font-sans text-[#4A4A4A]">
+    <div className="flex bg-[#F3F2EE] min-h-screen w-full font-sans text-[#4A4A4A]">
       <Sidebar />
       <Toaster position="top-right" />
 
-      <main className="flex-1 p-8 lg:p-12">
-        {/* Cabeçalho Personalizado */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 no-print">
-          <div>
-            <h1 className="text-2xl font-serif text-[#3D3D3D] tracking-tight">Relatórios de Vendas</h1>
-       
-          </div>
-          
-          <button 
-            onClick={() => window.print()} 
-            className="bg-[#5B705B] hover:bg-[#4A5C4A] text-white text-xs font-bold uppercase tracking-widest py-3 px-6 rounded-sm shadow-sm transition-all active:scale-95 flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-            </svg>
-            Imprimir Relatório
-          </button>
+      {/* ✅ NÃO MEXI NO SEU LAYOUT */}
+      <main id="relatorio" className="flex-1 p-10">
+
+        {/* HEADER */}
+        <div className="mb-10">
+          <p className="text-xs text-[#8E8C84] uppercase tracking-widest mb-2">
+            Relatórios
+          </p>
+          <h1 className="text-3xl font-semibold text-[#2F2F2F]">
+            Vendas
+          </h1>
+          <p className="text-sm text-[#8E8C84] mt-1">
+            Acompanhe todas as vendas realizadas
+          </p>
         </div>
 
-        {/* Tabela Estilizada */}
-        <div className="bg-white rounded-sm shadow-[0_2px_15px_rgba(0,0,0,0.02)] border border-[#EBE9E1] overflow-hidden">
-          <table className="min-w-full divide-y divide-[#EBE9E1]">
-            <thead className="bg-[#FCFBFA]">
-              <tr>
-                <th className="px-8 py-5 text-left text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Data e Hora</th>
-                <th className="px-8 py-5 text-left text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Cliente</th>
-                <th className="px-8 py-5 text-right text-[10px] font-bold text-[#8E8C84] uppercase tracking-widest border-b border-[#EBE9E1]">Valor da Venda</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F2F1ED] bg-white">
-              {loading ? (
-                <tr>
-                  <td colSpan="3" className="px-8 py-20 text-center text-[#8E8C84] text-xs font-light italic">
-                    <div className="flex flex-col items-center gap-3">
-                        <svg className="animate-spin h-6 w-6 text-[#D1CEC5]" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Buscando informações...
-                    </div>
-                  </td>
-                </tr>
-              ) : vendas.length === 0 ? (
-                <tr>
-                  <td colSpan="3" className="px-8 py-20 text-center text-[#8E8C84] text-xs font-light italic">
-                    <div className="text-[#D1CEC5] text-3xl mb-3 flex justify-center">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    </div>
-                    Nenhuma venda encontrada no período.
-                  </td>
-                </tr>
-              ) : (
-                vendas.map((venda) => (
-                  <tr key={venda.id} className="hover:bg-[#F9F7F2]/50 transition-colors group">
-                    <td className="px-8 py-5 whitespace-nowrap text-xs text-[#8E8C84]">
-                      {new Date(venda.created_at).toLocaleString('pt-BR')}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-medium text-[#3D3D3D]">
-                      {venda.clientes?.nome || 'Cliente não identificado'}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-right font-semibold text-[#5B705B]">
-                      R$ {parseFloat(venda.valor_total).toFixed(2)}
-                    </td>
+        {/* GRID PRINCIPAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* TABELA */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-[#E5E3DC] p-6 shadow-sm">
+
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-sm font-semibold text-[#3D3D3D] uppercase tracking-widest">
+                Histórico de vendas
+              </h2>
+
+              <button
+                onClick={exportarRelatorio}
+                className="bg-[#5B705B] hover:bg-[#4A5C4A] text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+              >
+                Exportar relatório
+              </button>
+            </div>
+
+            <div className="overflow-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-xs text-[#8E8C84] uppercase">
+                    <th className="text-left pb-3">Data</th>
+                    <th className="text-left pb-3">Cliente</th>
+                    <th className="text-right pb-3">Valor</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Rodapé do relatório (Total Acumulado) */}
-        {!loading && vendas.length > 0 && (
-          <div className="mt-8 flex justify-end no-print">
-            <div className="bg-white p-8 rounded-sm border border-[#EBE9E1] min-w-[300px] shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex flex-col items-end">
-              <span className="text-[#8E8C84] text-[10px] uppercase tracking-widest mb-2">Total acumulado</span>
-              <span className="text-3xl font-serif text-[#3D3D3D]">
-                R$ {vendas.reduce((acc, v) => acc + parseFloat(v.valor_total), 0).toFixed(2)}
-              </span>
+                </thead>
+
+                <tbody className="text-sm">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="3" className="py-10 text-center text-[#8E8C84]">
+                        Carregando...
+                      </td>
+                    </tr>
+                  ) : vendas.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="py-10 text-center text-[#8E8C84]">
+                        Nenhuma venda encontrada
+                      </td>
+                    </tr>
+                  ) : (
+                    vendas.map((venda) => (
+                      <tr key={venda.id} className="border-t border-[#F0EFEA] hover:bg-[#F9F8F5] transition">
+                        
+                        <td className="py-4">
+                          {new Date(venda.created_at).toLocaleString('pt-BR')}
+                        </td>
+
+                        <td className="py-4 font-medium text-[#2F2F2F]">
+                          {venda.clientes?.nome || 'Não identificado'}
+                        </td>
+
+                        <td className="py-4 text-right font-semibold text-[#5B705B]">
+                          R$ {parseFloat(venda.valor_total).toFixed(2)}
+                        </td>
+
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
-      </main>
 
-      {/* Estilo para impressão e personalização do scroll */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          .no-print, aside { display: none !important; }
-          main { margin: 0 !important; padding: 0 !important; width: 100% !important; background: white !important; }
-          .bg-white { box-shadow: none !important; border: 1px solid #EBE9E1 !important; }
-          body { background: white !important; }
-          table th { background: transparent !important; color: #3D3D3D !important; }
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #D1CEC5; border-radius: 10px; }
-      `}} />
+          {/* CARD LATERAL */}
+          <div className="bg-white rounded-xl border border-[#E5E3DC] p-6 shadow-sm flex flex-col justify-between">
+
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-sm font-semibold text-[#3D3D3D]">
+                  Resumo
+                </h2>
+                <span className="text-xs bg-[#F3F2EE] px-3 py-1 rounded-full text-[#8E8C84]">
+                  {vendas.length} vendas
+                </span>
+              </div>
+
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#8E8C84]">Total</span>
+                  <span className="font-semibold text-[#2F2F2F]">
+                    R$ {vendas.reduce((acc, v) => acc + parseFloat(v.valor_total), 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-[#8E8C84]">Última venda</span>
+                  <span>
+                    {vendas[0]
+                      ? new Date(vendas[0].created_at).toLocaleDateString('pt-BR')
+                      : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

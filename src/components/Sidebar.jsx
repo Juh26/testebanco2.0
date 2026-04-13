@@ -1,21 +1,23 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; 
 
 export default function Sidebar() {
   const location = useLocation(); 
   const navigate = useNavigate(); 
-  
-  const handleSair = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      navigate('/login'); 
-    } catch (error) {
-      console.error("Erro ao tentar sair:", error.message);
-      alert("Erro ao sair do sistema.");
-    }
-  };
 
+  
+ const handleSair = async () => {
+  try {
+    const { error } = await supabase.auth.signOut();  
+    if (error) throw error;
+
+    localStorage.removeItem("user") 
+ navigate("/login");
+  } catch (error) {
+    console.error("Erro ao tentar sair:", error.message);
+    alert("Erro ao sair do sistema.");
+  } 
+};
   const menuItems = [
     { label: 'Início', path: '/' },
     { label: 'Produtos', path: '/produtos' },
