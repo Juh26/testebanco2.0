@@ -17,6 +17,7 @@ export default function Sidebar() {
       alert("Erro ao sair do sistema.");
     } 
   };
+  
 
   const menuItems = [
     { label: 'Início', path: '/' },
